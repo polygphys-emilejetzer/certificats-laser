@@ -112,5 +112,9 @@ try:
     while True:
         schedule.run_pending()
         time.sleep(1)
+except KeyboardInterrupt:
+    print('On arrête.')
 finally:
     exporteur.terminate()
+
+print('Terminé.')
