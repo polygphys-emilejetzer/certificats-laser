@@ -5,14 +5,19 @@
 import subprocess
 import time
 
-from pathlib import Pat
+from pathlib import Path
+from datetime import datetime as dt
+from subprocess import run
 
 # Bibliothèque PIPy
 import schedule
+import pptx
+import keyring
+import getpass
 
 # Bibliothèques maison
 from polygphys.outils.reseau.msforms import MSFormConfig, MSForm
-from polygphys.outils.reseau import DisqueRéseau
+from polygphys.outils.reseau import DisqueRéseau, OneDrive
 
 # Définitions de classes
 
