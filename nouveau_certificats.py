@@ -178,6 +178,7 @@ class SSTLaserCertificatsForm(MSForm):
         return cadre.loc[:, ['date', 'matricule', 'courriel', 'nom']]
 
     def action(self, cadre):
+        print(f'Mise à jour {dt.now()}...')
         chemin_cert = Path(__file__).parent / self.config.get('certificats', 'chemin')
         cert = Certificat(chemin_cert)
         for i, entrée in cadre.iterrows():
@@ -209,30 +210,32 @@ class SSTLaserCertificatsForm(MSForm):
 
 # Programme
 if __name__ == '__main__':
-        chemin_config = Path('~').expanduser() / 'certificats_laser.cfg'
-        config = SSTLaserCertificatsConfig(chemin_config)
+    print('On reste vigilant pour les nouveaux certificats...')
+    chemin_config = Path('~').expanduser() / 'certificats_laser.cfg'
+    config = SSTLaserCertificatsConfig(chemin_config)
 
-        dossier = OneDrive('',
-                           config.get('onedrive', 'organisation'),
-                           config.get('onedrive', 'sous-dossier'),
-                           partagé=True)
-        fichier = dossier / config.get('formulaire', 'nom')
-        config.set('formulaire', 'chemin', str(fichier))
+    dossier = OneDrive('',
+                       config.get('onedrive', 'organisation'),
+                       config.get('onedrive', 'sous-dossier'),
+                       partagé=True)
+    fichier = dossier / config.get('formulaire', 'nom')
+    config.set('formulaire', 'chemin', str(fichier))
 
-        formulaire = SSTLaserCertificatsForm(config)
+    formulaire = SSTLaserCertificatsForm(config)
 
-        exporteur = subprocess.Popen(['unoconv', '--listener'])
+    print('unoconv démarre.')
+    exporteur = subprocess.Popen(['unoconv', '--listener'])
 
-        schedule.every().day.at('08:00').do(formulaire.mise_à_jour)
+    schedule.every().day.at('08:00').do(formulaire.mise_à_jour)
 
-        formulaire.mise_à_jour()
-        try:
-            while True:
-                schedule.run_pending()
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print('On arrête.')
-        finally:
-            exporteur.terminate()
+    formulaire.mise_à_jour()
+    try:
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print('On arrête.')
+    finally:
+        exporteur.terminate()
 
-        print('Terminé.')
+    print('Terminé.')
