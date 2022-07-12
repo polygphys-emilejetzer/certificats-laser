@@ -209,8 +209,9 @@ class SSTLaserCertificatsForm(MSForm):
             base_de_données.ajouter(matricule, nom_participant, courriel, date)
 
 # Programme
-if __name__ == '__main__':
-    print('On reste vigilant pour les nouveaux certificats...')
+def main():
+    import logging
+    logging.info('On reste vigilant pour les nouveaux certificats...')
     chemin_config = Path('~').expanduser() / 'certificats_laser.cfg'
     config = SSTLaserCertificatsConfig(chemin_config)
 
@@ -223,7 +224,7 @@ if __name__ == '__main__':
 
     formulaire = SSTLaserCertificatsForm(config)
 
-    print('unoconv démarre.')
+    logging.info('unoconv démarre.')
     exporteur = subprocess.Popen(['unoconv', '--listener'])
 
     schedule.every().day.at('08:00').do(formulaire.mise_à_jour)
@@ -234,8 +235,11 @@ if __name__ == '__main__':
             schedule.run_pending()
             time.sleep(1)
     except KeyboardInterrupt:
-        print('On arrête.')
+        logging.info('On arrête.')
     finally:
         exporteur.terminate()
 
-    print('Terminé.')
+    logging.info('Terminé.')
+
+if __name__ == '__main__':
+    main()
