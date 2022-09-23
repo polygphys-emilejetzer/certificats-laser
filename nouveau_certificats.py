@@ -23,13 +23,16 @@ from polygphys.outils.base_de_donnees import BaseDeDonnées, BaseTableau
 from polygphys.outils.base_de_donnees.dtypes import column
 from polygphys.outils.reseau.msforms import MSFormConfig, MSForm
 from polygphys.outils.reseau import DisqueRéseau, OneDrive
+from polygphys.outils.reseau.courriel import Courriel
 
 # Définitions de classes
+
 
 class SSTLaserCertificatsConfig(MSFormConfig):
 
     def default(self):
         return (Path(__file__).parent / 'nouveau_certificat.cfg').open().read()
+
 
 class Certificat:
 
@@ -39,16 +42,16 @@ class Certificat:
     def màj(self, nom, matricule):
         self.cert = pptx.Presentation(self.modèle)
         for forme in self.cert.slides[0].shapes:
-                if forme.has_text_frame:
-                    for par in forme.text_frame.paragraphs:
-                        for ligne in par.runs:
-                            if ligne.text == 'nom':
-                                ligne.text = str(nom)
-                            elif ligne.text == 'matricule':
-                                ligne.text = str(matricule)
-                            elif ligne.text.startswith('Date'):
-                                date = dt.today()
-                                ligne.text = f'Date: {date.year}-{date.month:02}'
+            if forme.has_text_frame:
+                for par in forme.text_frame.paragraphs:
+                    for ligne in par.runs:
+                        if ligne.text == 'nom':
+                            ligne.text = str(nom)
+                        elif ligne.text == 'matricule':
+                            ligne.text = str(matricule)
+                        elif ligne.text.startswith('Date'):
+                            date = dt.today()
+                            ligne.text = f'Date: {date.year}-{date.month:02}'
 
     def enregistrer(self, fichier):
         self.cert.save(fichier)
@@ -60,6 +63,7 @@ class Certificat:
              '-o',
              str(fichier_pdf),
              str(fichier)])
+
 
 class Participants(BaseTableau):
     colonnes_standard = (column('index', int, primary_key=True),
@@ -108,6 +112,7 @@ class Participants(BaseTableau):
 
         return self.select(where=conds)
 
+
 class FormationLaser(BaseTableau):
     colonnes_standard = (column('index', int, primary_key=True),
                          column('personne', int),
@@ -138,7 +143,7 @@ class FormationLaser(BaseTableau):
 
         if date is None:
             date = dt.today()
-            
+
         df = pd.DataFrame({'personne': [index_participant],
                            'date': [date],
                            'validation': [False]})
@@ -160,6 +165,7 @@ class FormationLaser(BaseTableau):
 
         return pd.concat(dfs)
 
+
 class SSTLaserCertificatsForm(MSForm):
 
     def nettoyer(self, cadre):
@@ -175,15 +181,38 @@ class SSTLaserCertificatsForm(MSForm):
         cadre.date = cadre.date.dt.date
         cadre.matricule = cadre.matricule.fillna(0)
 
-        return cadre.loc[:, ['date', 'matricule', 'courriel', 'nom']]
+        return cadre.loc[:, ['date', 'matricule', 'courriel', 'nom', 'nom_responsable', 'courriel_responsable', 'manipulation', 'alignement']]
+
+    def courriel(self, entrée):
+        nom_fichier = 'temp.xlsx'
+        entrée.to_excel(nom_fichier)
+
+        destinataire = 'emile.jetzer@polymtl.ca'
+        sujet = 'Complétion du test de sécurité laser'
+        message = f'{entrée.nom} ({entrée.matricule}, {entrée.courriel}), vient de compléter la formation de sécurité laser. Il travaille sous la supervision de {entrée.nom_responsable} ({entrée.courriel_responsable}).'
+
+        if entrée.manipulation == 'Je vais manipuler des lasers de classe 2 et plus'\
+                and entrée.alignement == 'Non':
+            destinataire += ',mikael.leduc@polymtl.ca'
+            message += '\n\nLa formation d\'alignement est nécessaire.'
+            sujet = '[formation alignement] ' + sujet
+
+        Courriel(destinataire,
+                 'emile.jetzer@polymtl.ca',
+                 'Complétion du test de sécurité laser',
+                 message,
+                 pièces_jointes=(nom_fichier,)).envoyer('smtp.polymtl.ca')
 
     def action(self, cadre):
         print(f'Mise à jour {dt.now()}...')
-        chemin_cert = Path(__file__).parent / self.config.get('certificats', 'chemin')
+        chemin_cert = Path(__file__).parent / \
+            self.config.get('certificats', 'chemin')
         cert = Certificat(chemin_cert)
         for i, entrée in cadre.iterrows():
             nom_participant, matricule, courriel, date = entrée.nom, entrée.matricule, entrée.courriel, entrée.date
             cert.màj(nom_participant, matricule)
+
+            self.courriel(entrée)
 
             for disque in self.config.getlist('certificats', 'disques'):
                 url = self.config.get(disque, 'url')
@@ -209,6 +238,8 @@ class SSTLaserCertificatsForm(MSForm):
             base_de_données.ajouter(matricule, nom_participant, courriel, date)
 
 # Programme
+
+
 def main():
     import logging
     logging.info('On reste vigilant pour les nouveaux certificats...')
@@ -240,6 +271,7 @@ def main():
         exporteur.terminate()
 
     logging.info('Terminé.')
+
 
 if __name__ == '__main__':
     main()
