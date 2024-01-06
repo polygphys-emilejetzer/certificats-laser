@@ -8,7 +8,7 @@ from pathlib import Path
 
 import schedule
 
-from nouveau_certificats import SSTLaserCertificatsConfig, FormationLaser
+from polygphys.sst.certificats_laser.nouveau_certificats import SSTLaserCertificatsConfig, FormationLaser
 
 def main():
     chemin_config = Path('~').expanduser() / 'certificats_laser.cfg'
